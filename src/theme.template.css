@@ -1,0 +1,1795 @@
+/* ==========================================================================
+   Byrcen Breathe
+   一张暖纸，浮在清晨淡蓝天光里的几层雾上，天光和雾在慢慢呼吸。
+   A warm sheet of paper floating on layers of morning mist, breathing slowly.
+
+   by Byrcen · MIT License · https://github.com/Byrcen/byrcen-breathe
+
+   1. 变量            2. 接到 Obsidian 的变量    3. 天光与雾层（含晨曦、星空、光束、浮尘）
+   4. 纸              5. 字与正文元素             6. 天光上的界面
+   7. 控件与浮层       8. 新标签页的呼吸花          9. 开关
+   10. 减弱动态效果
+   ========================================================================== */
+
+/* 下面这段是给 Style Settings 插件读的：装了插件，设置里会出现「Breathe」面板。
+   没装也没关系，所有效果默认都开着。 */
+
+/* @settings
+
+name: Byrcen Breathe
+id: breathe
+settings:
+    -
+        id: br-heading-effects
+        title: 视觉效果
+        type: heading
+        level: 2
+        collapsed: false
+    -
+        id: br-no-dawn-stars
+        title: 关闭晨曦与星空
+        description: 白天地平线的晨曦、夜里的星星和月光
+        type: class-toggle
+    -
+        id: br-no-beams
+        title: 关闭光束与浮尘
+        description: 右上角射出的光束，和光里飘的细尘
+        type: class-toggle
+    -
+        id: br-no-liquid
+        title: 关闭液态玻璃
+        description: 玻璃边缘的渐变高光
+        type: class-toggle
+    -
+        id: br-no-paper-light
+        title: 关闭纸的光影
+        description: 顺着光的投影，和纸随呼吸浮起
+        type: class-toggle
+    -
+        id: br-no-fog
+        title: 关闭雾层
+        type: class-toggle
+    -
+        id: br-no-stack
+        title: 关闭身后一叠纸
+        type: class-toggle
+    -
+        id: br-no-grain
+        title: 关闭纸纹
+        type: class-toggle
+    -
+        id: br-no-motion
+        title: 关闭所有呼吸动效
+        description: 天光、雾、光点、呼吸花都停下来
+        type: class-toggle
+    -
+        id: br-heading-files
+        title: 文件列表
+        type: heading
+        level: 2
+        collapsed: false
+    -
+        id: br-no-folder-serif
+        title: 关闭一级文件夹宋体
+        type: class-toggle
+    -
+        id: br-no-light-guides
+        title: 关闭光丝层级线
+        description: 换回 Obsidian 本来的直线
+        type: class-toggle
+    -
+        id: br-no-path-light
+        title: 关闭路径高亮
+        description: 当前文件上面的文件夹不再亮起来
+        type: class-toggle
+    -
+        id: br-no-unfold
+        title: 关闭展开淡入
+        type: class-toggle
+    -
+        id: br-no-tabular
+        title: 关闭数字等宽
+        type: class-toggle
+    -
+        id: br-no-nav-glow
+        title: 关闭纪念日发光
+        type: class-toggle
+    -
+        id: br-no-paper-fade
+        title: 关闭纸边淡出
+        description: 滚动时文字在纸的上下边缘慢慢淡入淡出
+        type: class-toggle
+    -
+        id: br-no-signature
+        title: 隐藏侧栏署名
+        description: 文件列表下方那行极淡的「Byrcen Breathe」
+        type: class-toggle
+    -
+        id: br-heading-writing
+        title: 写作
+        type: heading
+        level: 2
+        collapsed: false
+    -
+        id: br-focus
+        title: 专注模式
+        description: 打字时光标所在的段落清楚，其他段落轻轻变淡
+        type: class-toggle
+    -
+        id: br-heading-breath
+        title: 呼吸
+        type: heading
+        level: 2
+        collapsed: false
+    -
+        id: br-cycle
+        title: 呼吸一次的秒数
+        description: 一吸一呼加起来的秒数。天光、雾、光点、呼吸花都跟着这个节奏
+        type: variable-number-slider
+        default: 10
+        min: 4
+        max: 20
+        step: 1
+        format: s
+    -
+        id: br-breaths
+        title: 每轮呼吸几次
+        description: 新开一个标签页就是新的一轮，呼吸完显示「好了」
+        type: variable-number-slider
+        default: 6
+        min: 1
+        max: 20
+        step: 1
+    -
+        id: br-breath-forever
+        title: 一直呼吸，不计次数
+        type: class-toggle
+    -
+        id: br-heading-tune
+        title: 微调
+        type: heading
+        level: 2
+        collapsed: false
+    -
+        id: br-flower-size
+        title: 呼吸花大小
+        type: variable-number-slider
+        default: 330
+        min: 200
+        max: 480
+        step: 10
+        format: px
+    -
+        id: br-gap
+        title: 纸四周留白
+        description: 纸和编辑区边缘之间露出多少天光
+        type: variable-number-slider
+        default: 96
+        min: 8
+        max: 200
+        step: 4
+        format: px
+    -
+        id: br-fog-strength
+        title: 雾的浓度
+        type: variable-number-slider
+        default: 1
+        min: 0
+        max: 1.5
+        step: 0.1
+
+*/
+
+
+/* ---------- 1. 变量 ---------- */
+
+/* 呼吸的进度：0 是呼气到底，1 是吸气到顶。注册成数字才能做动画；
+   不继承，每个用到的元素各自动，免得整页跟着重算样式 */
+@property --br-breath {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+body {
+  --br-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", Georgia, serif;
+  --br-sans: "PingFang SC", -apple-system, system-ui, sans-serif;
+  --br-radius: 3px;
+  --br-cycle: 10s;
+  --br-ease: cubic-bezier(.42, 0, .58, 1);
+  --br-hover: 0.4s ease;
+
+  --br-flower-size: 330px;
+  --br-breaths: 6;
+  --br-fog-strength: 1;
+}
+
+/* 亮色：清晨 */
+.theme-light {
+  --br-sky: linear-gradient(180deg, #b7d6ef 0%, #cfe5f3 55%, #e3f0f2 100%);
+  --br-sky-translucent: linear-gradient(180deg, rgba(183, 214, 239, .86) 0%, rgba(207, 229, 243, .86) 55%, rgba(227, 240, 242, .86) 100%);
+  --br-glow: rgba(255, 255, 255, .6);
+  --br-fog-far: rgba(255, 255, 255, .42);
+  --br-fog-near: rgba(244, 250, 252, .6);
+  --br-ground: rgba(246, 250, 250, .7);
+  --br-dawn: rgba(255, 196, 170, .42);
+  --br-star: transparent;
+  --br-beam-rgb: 255, 255, 255;
+  --br-beam-a: .38;
+  --br-mote: rgba(255, 255, 255, .95);
+
+  --br-paper: #f8f6f0;
+  --br-paper-2: #efebe2;
+  --br-paper-light: 255, 255, 255;
+  --br-paper-light-lo: .35;
+  --br-paper-light-hi: .8;
+  --br-paper-cool: rgba(150, 195, 225, .1);
+  --br-paper-edge-hi: rgba(255, 255, 255, 1);
+  --br-paper-edge-lo: rgba(120, 105, 80, .12);
+  --br-paper-shadow: 0 1px 2px rgba(30, 70, 110, .1), 0 6px 14px rgba(30, 90, 150, .12), 0 26px 60px rgba(30, 90, 150, .28);
+  --br-cast-1: rgba(30, 70, 110, .1);
+  --br-cast-2: rgba(30, 90, 150, .12);
+  --br-cast-3: rgba(30, 90, 150, .26);
+  --br-stack-shadow: 0 10px 34px rgba(30, 90, 150, .14);
+  --br-grain: __GRAIN_LIGHT__;
+
+  --br-title: #2b2924;
+  --br-text: #3a362e;
+  --br-muted: #8a8376;
+  --br-faint: #a39d90;
+  --br-line: #ddd7ca;
+
+  --br-light: #3fa2d8;
+  --br-light-rgb: 63, 162, 216;
+  --br-link: #2a7fb0;
+  --br-highlight: rgba(120, 195, 240, .28);
+  --br-danger: #b0503a;
+
+  --br-sky-ink: #3d6584;
+  --br-sky-ink-2: #5a7a94;
+  --br-sky-title: #1f4a66;
+  --br-glass: rgba(255, 255, 255, .55);
+  --br-glass-hover: rgba(255, 255, 255, .3);
+  --br-glass-edge: rgba(255, 255, 255, .9);
+  --br-divider: rgba(255, 255, 255, .55);
+  /* 液态玻璃：内部上亮下暗，边缘一道从左上到右下的高光 */
+  --br-glass-fill: linear-gradient(180deg, rgba(255, 255, 255, .74), rgba(255, 255, 255, .42));
+  --br-rim: linear-gradient(135deg, #ffffff, rgba(255, 255, 255, .15) 45%, rgba(255, 255, 255, .8));
+  --br-float-rim: inset 0 1px 0 rgba(255, 255, 255, .95);
+
+  --br-float: rgba(248, 246, 240, .86);
+  --br-float-shadow: 0 0 0 1px rgba(255, 255, 255, .9), 0 14px 40px rgba(50, 120, 180, .2);
+  --br-tooltip: rgba(29, 51, 70, .88);
+  --br-tooltip-text: #eef4f8;
+  --br-modal-bg: rgba(140, 175, 205, .35);
+
+  --br-me: rgba(63, 162, 216, .13);
+  --br-inset: rgba(60, 50, 30, .08);
+  --br-inset-edge: rgba(60, 50, 30, .05);
+
+  /* 呼吸花（A 原味）：白天花瓣颜色提亮一点，花心的光更足 */
+  --br-petal-a: rgba(70, 170, 235, .45);
+  --br-petal-b: rgba(60, 195, 185, .45);
+  --br-petal-core: rgba(255, 255, 255, .8);
+  --br-petal-blend: screen;
+  --br-bloom: .35;
+}
+
+/* 暗色：入夜 */
+.theme-dark {
+  --br-sky: linear-gradient(180deg, #0b1c2c 0%, #0f2433 55%, #132d37 100%);
+  --br-sky-translucent: linear-gradient(180deg, rgba(11, 28, 44, .9) 0%, rgba(15, 36, 51, .9) 55%, rgba(19, 45, 55, .9) 100%);
+  --br-glow: rgba(205, 228, 255, .16); /* 冷白的月光 */
+  --br-fog-far: rgba(150, 195, 225, .07);
+  --br-fog-near: rgba(150, 195, 225, .1);
+  --br-ground: rgba(150, 195, 225, .08);
+  --br-dawn: transparent;
+  --br-star: rgba(235, 245, 255, .95);
+  --br-beam-rgb: 170, 210, 245;
+  --br-beam-a: .09;
+  --br-mote: rgba(191, 227, 255, .9);
+
+  --br-paper: #272725;
+  --br-paper-2: #2e2e2c;
+  --br-paper-light: 160, 210, 245;
+  --br-paper-light-lo: .03;
+  --br-paper-light-hi: .08;
+  --br-paper-cool: rgba(120, 180, 220, .05);
+  --br-paper-edge-hi: rgba(200, 230, 255, .16);
+  --br-paper-edge-lo: rgba(0, 0, 0, .3);
+  --br-paper-shadow: 0 1px 2px rgba(0, 0, 0, .25), 0 6px 14px rgba(0, 0, 0, .3), 0 26px 60px rgba(0, 0, 0, .5);
+  --br-cast-1: rgba(0, 0, 0, .25);
+  --br-cast-2: rgba(0, 0, 0, .3);
+  --br-cast-3: rgba(0, 0, 0, .5);
+  --br-stack-shadow: 0 10px 34px rgba(0, 0, 0, .35);
+  --br-grain: __GRAIN_DARK__;
+
+  --br-title: #e6e1d6;
+  --br-text: #cfc9bc;
+  --br-muted: #a49d8f;
+  --br-faint: #6f695e;
+  --br-line: #3a3731;
+
+  --br-light: #6cc6f2;
+  --br-light-rgb: 108, 198, 242;
+  --br-link: #8fd3f5;
+  --br-highlight: rgba(108, 198, 242, .22);
+  --br-danger: #e08a72;
+
+  --br-sky-ink: #9bb8cf;
+  --br-sky-ink-2: #6f8ea6;
+  --br-sky-title: #c4e6f6;
+  --br-glass: rgba(255, 255, 255, .08);
+  --br-glass-hover: rgba(255, 255, 255, .05);
+  --br-glass-edge: rgba(255, 255, 255, .14);
+  --br-divider: rgba(255, 255, 255, .07);
+  --br-glass-fill: linear-gradient(180deg, rgba(255, 255, 255, .12), rgba(255, 255, 255, .05));
+  --br-rim: linear-gradient(135deg, rgba(200, 230, 255, .55), rgba(255, 255, 255, .04) 45%, rgba(200, 230, 255, .3));
+  --br-float-rim: inset 0 1px 0 rgba(200, 230, 255, .18);
+
+  --br-float: rgba(36, 34, 30, .86);
+  --br-float-shadow: 0 0 0 1px rgba(255, 255, 255, .1), 0 14px 40px rgba(0, 0, 0, .45);
+  --br-tooltip: rgba(8, 18, 28, .92);
+  --br-tooltip-text: #e6eef4;
+  --br-modal-bg: rgba(4, 12, 20, .5);
+
+  --br-me: rgba(108, 198, 242, .14);
+  --br-inset: rgba(0, 0, 0, .3);
+  --br-inset-edge: rgba(255, 255, 255, .04);
+
+  /* 呼吸花（A 原味）：夜里花瓣叠在一起的地方变亮 */
+  --br-petal-a: rgba(80, 175, 240, .42);
+  --br-petal-b: rgba(70, 205, 190, .42);
+  --br-petal-core: rgba(225, 252, 255, .5);
+  --br-petal-blend: screen;
+  --br-bloom: .55;
+}
+
+
+/* ---------- 2. 接到 Obsidian 的变量 ---------- */
+
+body {
+  --font-text-theme: var(--br-serif);
+  --font-interface-theme: var(--br-sans);
+  --font-monospace-theme: "SF Mono", Menlo, monospace;
+
+  --file-line-width: 680px;
+  --line-height-normal: 1.9;
+  --p-spacing: 1.1rem;
+  --heading-spacing: 2.2rem;
+
+  --inline-title-font: var(--br-serif);
+  --inline-title-size: 2.1em;
+  --inline-title-weight: 400;
+  --inline-title-line-height: 1.3;
+  --h1-font: var(--br-serif);
+  --h2-font: var(--br-serif);
+  --h1-size: 1.6em;
+  --h2-size: 1.3em;
+  --h3-size: .85em;
+  --h4-size: .85em;
+  --h1-weight: 500;
+  --h2-weight: 500;
+  --h3-weight: 500;
+  --h4-weight: 500;
+
+  --radius-s: var(--br-radius);
+  --radius-m: var(--br-radius);
+  --radius-l: var(--br-radius);
+  --radius-xl: var(--br-radius);
+  --input-radius: var(--br-radius);
+  --button-radius: var(--br-radius);
+  --checkbox-radius: var(--br-radius);
+  --toggle-radius: var(--br-radius);
+  --toggle-thumb-radius: 2px;
+  --slider-thumb-radius: var(--br-radius);
+  --tag-radius: var(--br-radius);
+  --callout-radius: var(--br-radius);
+  --modal-radius: var(--br-radius);
+  --tab-radius: var(--br-radius);
+  --tab-radius-active: var(--br-radius);
+  --tab-curve: 0;
+  --clickable-icon-radius: var(--br-radius);
+  --image-radius: var(--br-radius);
+  --callout-blend-mode: normal;
+
+  --link-decoration: none;
+  --link-decoration-hover: underline;
+  --link-external-decoration: none;
+  --link-external-decoration-hover: underline;
+}
+
+.theme-light,
+.theme-dark {
+  --color-accent: var(--br-light);
+  --color-accent-1: var(--br-light);
+  --color-accent-2: var(--br-light);
+  --interactive-accent: var(--br-light);
+  --interactive-accent-hover: var(--br-link);
+  --text-on-accent: #ffffff;
+
+  --background-primary: var(--br-paper);
+  --background-primary-alt: var(--br-paper-2);
+  --background-secondary: var(--br-paper);
+  --background-secondary-alt: var(--br-paper-2);
+  --background-modifier-border: var(--br-line);
+  --background-modifier-border-hover: var(--br-faint);
+  --background-modifier-border-focus: var(--br-light);
+  --background-modifier-hover: rgba(var(--br-light-rgb), .08);
+  --background-modifier-active-hover: rgba(var(--br-light-rgb), .12);
+  --background-modifier-form-field: var(--br-paper);
+  --divider-color: var(--br-divider);
+
+  --text-normal: var(--br-text);
+  --text-muted: var(--br-muted);
+  --text-faint: var(--br-faint);
+  --text-accent: var(--br-link);
+  --text-accent-hover: var(--br-light);
+  --text-selection: var(--br-highlight);
+  --text-highlight-bg: var(--br-highlight);
+  --text-error: var(--br-danger);
+
+  --h1-color: var(--br-title);
+  --h2-color: var(--br-title);
+  --h3-color: var(--br-muted);
+  --h4-color: var(--br-muted);
+  --inline-title-color: var(--br-title);
+  --bold-color: var(--br-title);
+
+  --link-color: var(--br-link);
+  --link-color-hover: var(--br-light);
+  --link-external-color: var(--br-link);
+  --link-external-color-hover: var(--br-light);
+  --link-unresolved-color: var(--br-muted);
+
+  --list-marker-color: var(--br-faint);
+  --list-marker-color-hover: var(--br-muted);
+  --blockquote-border-thickness: 2px;
+  --blockquote-border-color: var(--br-line);
+  --blockquote-color: var(--br-muted);
+  --hr-color: var(--br-line);
+  --code-background: var(--br-paper-2);
+  --code-normal: var(--br-text);
+  --tag-color: var(--br-link);
+  --tag-color-hover: var(--br-light);
+  --tag-background: rgba(var(--br-light-rgb), .1);
+  --tag-background-hover: rgba(var(--br-light-rgb), .16);
+  --tag-border-width: 0;
+  --table-border-color: var(--br-line);
+  --table-header-background: var(--br-paper-2);
+  --checkbox-color: var(--br-light);
+  --checkbox-color-hover: var(--br-link);
+  --checkbox-border-color: var(--br-faint);
+  --caret-color: var(--br-light);
+  --scrollbar-thumb-bg: rgba(138, 131, 118, .22);
+  --scrollbar-active-thumb-bg: rgba(138, 131, 118, .4);
+
+  --icon-color: var(--br-muted);
+  --icon-color-hover: var(--br-title);
+  --icon-color-active: var(--br-light);
+
+  --graph-node: var(--br-light);
+  --graph-node-focused: var(--br-link);
+  --graph-line: var(--br-line);
+}
+
+
+/* ---------- 3. 天光与雾层 ---------- */
+
+/* 远天：整个窗口最底下的渐变 */
+.app-container {
+  background: var(--br-sky);
+}
+
+body.is-translucent:not(.is-fullscreen) .app-container,
+body.is-translucent:not(.is-fullscreen) .titlebar {
+  background: var(--br-sky-translucent);
+}
+
+/* 侧栏、标签栏这些地方都不要自己的底色，直接铺在天光上 */
+.workspace,
+.workspace-split,
+.workspace-tabs,
+.workspace-leaf,
+.workspace-leaf-content,
+.workspace-tab-container,
+.workspace-tab-header-container,
+.workspace-ribbon,
+.workspace-ribbon.mod-left::before,
+.workspace-split.mod-root .view-header,
+.workspace-split.mod-root .workspace-leaf-content:not([data-type="markdown"]) > .view-content,
+.side-dock-ribbon,
+.titlebar,
+.status-bar {
+  background: transparent !important;
+}
+
+body.is-translucent:not(.is-fullscreen) {
+  --divider-color: var(--br-divider);
+}
+
+/* 内容浮在雾层上面 */
+.app-container {
+  position: relative;
+}
+
+.app-container > .horizontal-main-container {
+  position: relative;
+  z-index: 1;
+}
+
+.app-container > .status-bar {
+  z-index: 2;
+}
+
+/* 图层从远到近：
+   .app-container::before                  光团 + 光束（呼吸明暗）
+   .app-container::after                   远雾带（往左飘）
+   .horizontal-main-container::before      近雾带 + 地平雾（往右飘）
+   .workspace::before                      晨曦（昼，不动）
+   .workspace::after                       浮尘（极慢地往左上飘）
+   .horizontal-main-container::after       星星（夜，跟着呼吸闪）
+   然后才是侧栏、标签栏和纸 */
+
+/* 光团和光束：右上角一团光，斜斜射出几道很淡的光束，越远越淡 */
+body {
+  --br-beams: conic-gradient(from 200deg at 100% 0%,
+    transparent 0deg,
+    transparent 2deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.15)) 4deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.55)) 6deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.85)) 7.5deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 1)) 9deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.85)) 10.5deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.55)) 12deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.15)) 14deg, transparent 16deg,
+    transparent 20deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.15)) 22deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.55)) 24deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.85)) 25.5deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 1)) 27deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.85)) 28.5deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.55)) 30deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.15)) 32deg, transparent 34deg,
+    transparent 38deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.15)) 40deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.55)) 42deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.85)) 43.5deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 1)) 45deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.85)) 46.5deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.55)) 48deg, rgba(var(--br-beam-rgb), calc(var(--br-beam-a) * 0.15)) 50deg, transparent 52deg,
+    transparent 360deg);
+}
+
+.app-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 34vw 40vh at 94% 2%, var(--br-glow), transparent),
+    var(--br-beams);
+  -webkit-mask-image: radial-gradient(circle at 100% 0%, #000 0, #000 20%, transparent 80%);
+  mask-image: radial-gradient(circle at 100% 0%, #000 0, #000 20%, transparent 80%);
+  transform-origin: 100% 0;
+  filter: blur(6px);
+  pointer-events: none;
+  animation: br-glow var(--br-cycle) var(--br-ease) infinite;
+}
+
+/* 远雾带：窗口约 40% 高，往左飘 */
+.app-container::after {
+  content: "";
+  position: absolute;
+  left: -6%;
+  right: -6%;
+  top: 30%;
+  height: 24%;
+  background:
+    radial-gradient(ellipse 42% 50% at 26% 50%, var(--br-fog-far), transparent 70%),
+    radial-gradient(ellipse 38% 44% at 76% 58%, var(--br-fog-far), transparent 70%);
+  opacity: var(--br-fog-strength);
+  pointer-events: none;
+  animation: br-fog-far var(--br-cycle) var(--br-ease) infinite;
+}
+
+/* 晨曦（昼）：地平线的雾里透一抹淡淡的暖光 */
+.app-container > .horizontal-main-container > .workspace {
+  position: relative;
+}
+
+.app-container > .horizontal-main-container > .workspace::before {
+  content: "";
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: 0;
+  height: 45%;
+  z-index: -1;
+  background: radial-gradient(ellipse 55% 70% at 50% 110%, var(--br-dawn), transparent 75%);
+  pointer-events: none;
+}
+
+/* 浮尘：光束里几粒细尘，20 秒一轮极慢地往左上飘，两头淡入淡出 */
+.app-container > .horizontal-main-container > .workspace::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 55%;
+  height: 60%;
+  z-index: -1;
+  background:
+    radial-gradient(circle 1.6px at 72% 30%, var(--br-mote), transparent),
+    radial-gradient(circle 1.2px at 54% 48%, var(--br-mote), transparent),
+    radial-gradient(circle 2px at 86% 56%, var(--br-mote), transparent),
+    radial-gradient(circle 1.3px at 40% 22%, var(--br-mote), transparent),
+    radial-gradient(circle 1.8px at 64% 72%, var(--br-mote), transparent),
+    radial-gradient(circle 1.1px at 92% 20%, var(--br-mote), transparent);
+  pointer-events: none;
+  animation: br-dust calc(var(--br-cycle) * 2) linear infinite;
+}
+
+/* 星星（夜）：天的上半部，跟着呼吸一起闪 */
+.app-container > .horizontal-main-container::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 48%;
+  z-index: -1;
+  background:
+    radial-gradient(circle 1.4px at 8% 18%, var(--br-star), transparent),
+    radial-gradient(circle 1px at 17% 52%, var(--br-star), transparent),
+    radial-gradient(circle 1.6px at 26% 9%, var(--br-star), transparent),
+    radial-gradient(circle 1px at 34% 34%, var(--br-star), transparent),
+    radial-gradient(circle 1.2px at 43% 14%, var(--br-star), transparent),
+    radial-gradient(circle 1px at 51% 61%, var(--br-star), transparent),
+    radial-gradient(circle 1.5px at 59% 26%, var(--br-star), transparent),
+    radial-gradient(circle 1px at 66% 8%, var(--br-star), transparent),
+    radial-gradient(circle 1.3px at 74% 44%, var(--br-star), transparent),
+    radial-gradient(circle 1px at 81% 16%, var(--br-star), transparent),
+    radial-gradient(circle 1.6px at 88% 33%, var(--br-star), transparent),
+    radial-gradient(circle 1px at 95% 7%, var(--br-star), transparent),
+    radial-gradient(circle 1.1px at 4% 70%, var(--br-star), transparent),
+    radial-gradient(circle 1.2px at 92% 66%, var(--br-star), transparent);
+  pointer-events: none;
+  animation: br-twinkle var(--br-cycle) var(--br-ease) infinite;
+}
+
+.theme-light .app-container > .horizontal-main-container::after {
+  display: none;
+}
+
+/* 近雾带和地平雾：窗口下半，往右飘 */
+.app-container > .horizontal-main-container::before {
+  content: "";
+  position: absolute;
+  left: -6%;
+  right: -6%;
+  top: 52%;
+  bottom: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 48% 20% at 60% 22%, var(--br-fog-near), transparent 70%),
+    radial-gradient(ellipse 34% 16% at 12% 16%, var(--br-fog-near), transparent 70%),
+    linear-gradient(180deg, transparent 50%, var(--br-ground) 100%);
+  opacity: var(--br-fog-strength);
+  pointer-events: none;
+  animation: br-fog-near var(--br-cycle) var(--br-ease) infinite;
+}
+
+@keyframes br-breath {
+  0%, 100% { --br-breath: 0; }
+  50%      { --br-breath: 1; }
+}
+
+@keyframes br-glow {
+  0%, 100% { opacity: .55; transform: scale(1); }
+  50%      { opacity: .95; transform: scale(1.06); }
+}
+
+@keyframes br-fog-far {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(-10px); }
+}
+
+@keyframes br-fog-near {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(16px); }
+}
+
+@keyframes br-twinkle {
+  0%, 100% { opacity: .35; }
+  50%      { opacity: 1; }
+}
+
+@keyframes br-dust {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translate(-40px, -50px); opacity: 0; }
+}
+
+
+/* ---------- 4. 纸 ---------- */
+
+/* 纸铺满编辑区，四周留一圈天光；文字栏仍然居中、宽度不变。
+   纸是一块固定的「桌面」，内容在纸里面滚动，纸上的光和纸纹不会跟着跑 */
+body {
+  --br-gap: 96px;      /* 纸左右和下方留出的天光，Style Settings 里可调 */
+  --br-gap-top: 24px;
+}
+
+.workspace-split.mod-root .workspace-leaf-content[data-type="markdown"] > .view-content {
+  position: relative;
+  box-sizing: border-box;
+  width: auto;
+  height: calc(100% - var(--header-height) - var(--br-gap-top) - var(--br-gap));
+  margin: var(--br-gap-top) var(--br-gap) var(--br-gap);
+  overflow: hidden;
+  border-radius: var(--br-radius);
+  background-color: var(--br-paper);
+  background-image:
+    var(--br-grain),
+    radial-gradient(ellipse 60% 420px at 100% 0%,
+      rgba(var(--br-paper-light), calc(var(--br-paper-light-lo) + (var(--br-paper-light-hi) - var(--br-paper-light-lo)) * var(--br-breath))),
+      transparent 70%),
+    linear-gradient(0deg, var(--br-paper-cool), transparent 220px);
+  /* 纸的光影：光从右上来，投影往左下落；吸气时投影变大变柔，像纸轻轻浮起。
+     纸本身不移动，免得编辑时光标和点击位置跟着晃 */
+  --br-paper-cast:
+    calc(-1px - 1px * var(--br-breath)) calc(2px + 1px * var(--br-breath)) calc(3px + 1px * var(--br-breath)) var(--br-cast-1),
+    calc(-4px - 3px * var(--br-breath)) calc(10px + 6px * var(--br-breath)) calc(18px + 10px * var(--br-breath)) var(--br-cast-2),
+    calc(-10px - 6px * var(--br-breath)) calc(26px + 14px * var(--br-breath)) calc(56px + 20px * var(--br-breath)) var(--br-cast-3);
+  box-shadow:
+    inset 0 1px 0 var(--br-paper-edge-hi),
+    inset 1px 0 0 var(--br-paper-edge-hi),
+    inset 0 -2px 0 var(--br-paper-edge-lo),
+    inset -1px 0 0 var(--br-paper-edge-lo),
+    var(--br-paper-cast);
+  animation: br-breath var(--br-cycle) var(--br-ease) infinite;
+}
+
+/* 身后一叠纸：两张更淡、更远的纸，错开一点、转一点，不跟着动。
+   纸本身会裁掉超出的部分，所以这两张挂在外面一层的标签页上 */
+.workspace-split.mod-root .workspace-leaf-content[data-type="markdown"]::before,
+.workspace-split.mod-root .workspace-leaf-content[data-type="markdown"]::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  border-radius: var(--br-radius);
+  background-color: var(--br-paper-2);
+  box-shadow: var(--br-stack-shadow);
+  transform-origin: 50% 0;
+  pointer-events: none;
+}
+
+.workspace-split.mod-root .workspace-leaf-content[data-type="markdown"]::before {
+  top: calc(var(--header-height) + var(--br-gap-top) - 10px);
+  left: calc(var(--br-gap) + 18px);
+  right: calc(var(--br-gap) - 14px);
+  bottom: calc(var(--br-gap) + 8px);
+  opacity: .55;
+  transform: rotate(.6deg);
+}
+
+.workspace-split.mod-root .workspace-leaf-content[data-type="markdown"]::after {
+  top: calc(var(--header-height) + var(--br-gap-top) - 5px);
+  left: calc(var(--br-gap) - 12px);
+  right: calc(var(--br-gap) + 10px);
+  bottom: calc(var(--br-gap) - 4px);
+  opacity: .8;
+  transform: rotate(-.4deg);
+}
+
+/* 纸里面的编辑区和阅读区透明，露出纸 */
+.workspace-split.mod-root .markdown-source-view,
+.workspace-split.mod-root .markdown-reading-view,
+.workspace-split.mod-root .markdown-preview-view,
+.workspace-split.mod-root .cm-editor,
+.workspace-split.mod-root .cm-scroller {
+  background-color: transparent;
+}
+
+/* 纸边柔和淡出：滚动时文字在纸的上下边缘慢慢淡入淡出，像沉进纸里 */
+.workspace-split.mod-root .workspace-leaf-content[data-type="markdown"] .markdown-source-view.mod-cm6 .cm-scroller,
+.workspace-split.mod-root .workspace-leaf-content[data-type="markdown"] .markdown-reading-view > .markdown-preview-view {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 22px, #000 calc(100% - 30px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 22px, #000 calc(100% - 30px), transparent 100%);
+}
+
+
+/* ---------- 5. 字与正文元素 ---------- */
+
+/* 文件名大标题：前面一颗会呼吸的光点。
+   光晕最大半径 15px，圆心离左边 18px，留足余量，免得光晕被标题框裁掉 */
+.inline-title {
+  padding-left: 40px;
+  background-image: radial-gradient(circle at 18px .65em,
+    var(--br-light) 0 3.5px,
+    rgba(var(--br-light-rgb), calc(.16 + .1 * var(--br-breath))) 4px calc(7px + 3px * var(--br-breath)),
+    transparent calc(9px + 6px * var(--br-breath)));
+  background-repeat: no-repeat;
+  animation: br-breath var(--br-cycle) var(--br-ease) infinite;
+}
+
+/* 三四级标题：苹方小字，拉开字距，像栏目名 */
+.markdown-rendered h3,
+.markdown-rendered h4,
+.cm-s-obsidian .cm-header-3,
+.cm-s-obsidian .cm-header-4 {
+  font-family: var(--br-sans);
+  letter-spacing: .2em;
+}
+
+.markdown-rendered strong,
+.cm-s-obsidian .cm-strong {
+  color: var(--br-title);
+}
+
+.markdown-rendered mark,
+.cm-s-obsidian span.cm-highlight {
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+.markdown-rendered a,
+.cm-s-obsidian .cm-hmd-internal-link .cm-underline,
+.cm-s-obsidian .cm-link .cm-underline {
+  text-underline-offset: 3px;
+  transition: color var(--br-hover);
+}
+
+.markdown-rendered a.tag,
+.cm-s-obsidian .cm-hashtag {
+  font-family: var(--br-sans);
+  font-size: .82em;
+}
+
+.markdown-rendered hr {
+  border: none;
+  height: 1px;
+  width: 64px;
+  margin: 2.4em auto;
+  background-color: var(--br-line);
+}
+
+.markdown-rendered img,
+.internal-embed.image-embed img {
+  border-radius: var(--br-radius);
+}
+
+/* callout：深一级的纸，没有边框；标题是小字，图标换成一颗小光点 */
+.callout {
+  background-color: var(--br-paper-2);
+  border: none;
+  border-radius: var(--br-radius);
+  mix-blend-mode: normal;
+}
+
+.callout > .callout-title {
+  color: var(--br-muted);
+  font-family: var(--br-sans);
+  font-size: .85em;
+  letter-spacing: .08em;
+}
+
+.callout .callout-icon {
+  align-self: center;
+  width: 5px;
+  height: 5px;
+  min-width: 5px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background-color: rgb(var(--callout-color));
+}
+
+.callout .callout-icon svg {
+  display: none;
+}
+
+.callout {
+  --callout-color: var(--br-light-rgb);
+}
+
+.callout[data-callout="warning"],
+.callout[data-callout="danger"],
+.callout[data-callout="error"],
+.callout[data-callout="bug"],
+.callout[data-callout="caution"] {
+  --callout-color: 176, 80, 58 !important;
+}
+
+.markdown-rendered pre,
+.markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock {
+  border-radius: var(--br-radius);
+}
+
+/* 代码块：像压进纸里的一块 —— 一圈很细的内阴影；编辑模式右上角的语言标签一直显示，小号字 */
+.markdown-rendered pre {
+  box-shadow: inset 0 1px 3px var(--br-inset), inset 0 0 0 1px var(--br-inset-edge);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock-begin {
+  box-shadow: inset 0 1px 0 var(--br-inset-edge);
+}
+
+.markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock-end {
+  box-shadow: inset 0 -1px 0 var(--br-inset-edge);
+}
+
+.markdown-source-view.mod-cm6 .code-block-flair {
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: lowercase;
+  color: var(--br-faint);
+  background: transparent;
+}
+
+.markdown-rendered :not(pre) > code,
+.cm-s-obsidian .cm-inline-code {
+  border-radius: 2px;
+}
+
+/* 表格：书页式 —— 去掉竖线，只留横线，上下各一道粗线框住；
+   表头小号苹方、拉开字距；第一列是浅色标签；鼠标经过的那行一抹天光 */
+body {
+  --table-border-width: 0;
+  --table-header-border-width: 0;
+  --table-column-first-border-width: 0;
+  --table-column-last-border-width: 0;
+  --table-row-last-border-width: 0;
+  --table-header-background: transparent;
+  --table-header-background-hover: transparent;
+  --table-header-font: var(--br-sans);
+  --table-header-weight: 500;
+  --table-header-color: var(--br-muted);
+  --table-row-background-hover: rgba(var(--br-light-rgb), .08);
+  --table-line-height: 1.6;
+}
+
+.markdown-rendered table,
+.cm-table-widget table {
+  border-collapse: collapse;
+  border-top: 1.5px solid var(--br-title);
+  border-bottom: 1.5px solid var(--br-title);
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown-rendered th,
+.cm-table-widget th {
+  font-size: .82em;
+  letter-spacing: .08em;
+  border-bottom: .5px solid var(--br-faint) !important;
+}
+
+.markdown-rendered th,
+.markdown-rendered td {
+  padding: 8px 14px;
+}
+
+.markdown-source-view.mod-cm6 .cm-table-widget .table-cell-wrapper {
+  padding: 8px 14px;
+}
+
+.markdown-rendered tbody tr + tr td,
+.cm-table-widget tbody tr + tr td {
+  border-top: .5px solid var(--br-line) !important;
+}
+
+.markdown-rendered tbody td:first-child,
+.cm-table-widget tbody td:first-child {
+  font-family: var(--br-sans);
+  font-size: .85em;
+  letter-spacing: .06em;
+  color: var(--br-muted);
+}
+
+.markdown-rendered tbody tr,
+.cm-table-widget tbody tr {
+  transition: background-color var(--br-hover);
+}
+
+.markdown-rendered tbody tr:hover,
+.cm-table-widget tbody tr:hover {
+  background-color: rgba(var(--br-light-rgb), .08);
+}
+
+.metadata-container {
+  border-radius: var(--br-radius);
+}
+
+
+/* ---------- 6. 天光上的界面 ---------- */
+
+/* 天光上的字色 */
+.workspace-ribbon,
+.workspace-split.mod-left-split,
+.workspace-split.mod-right-split,
+.workspace-tab-header-container,
+.workspace-split.mod-root .view-header,
+.status-bar {
+  --text-normal: var(--br-sky-ink);
+  --text-muted: var(--br-sky-ink-2);
+  --text-faint: var(--br-sky-ink-2);
+  --icon-color: var(--br-sky-ink-2);
+  --icon-color-hover: var(--br-sky-ink);
+  --icon-color-active: var(--br-sky-title);
+  --nav-item-color: var(--br-sky-ink-2);
+  --nav-item-color-hover: var(--br-sky-ink);
+  --nav-item-color-active: var(--br-sky-title);
+  --nav-item-color-selected: var(--br-sky-title);
+  --nav-item-background-hover: var(--br-glass-hover);
+  --nav-item-background-active: var(--br-glass);
+  --nav-item-background-selected: var(--br-glass);
+  --nav-collapse-icon-color: var(--br-sky-ink-2);
+  --background-modifier-hover: var(--br-glass-hover);
+  --background-modifier-active-hover: var(--br-glass);
+  --background-modifier-form-field: var(--br-glass);
+  --background-modifier-border: var(--br-glass-edge);
+  --tab-text-color: var(--br-sky-ink-2);
+  --tab-text-color-focused: var(--br-sky-ink);
+  --tab-text-color-focused-active: var(--br-sky-title);
+  --tab-text-color-focused-active-current: var(--br-sky-title);
+  --tab-background-active: var(--br-glass);
+}
+
+/* 左边的图标栏和底部状态栏：平时淡出，鼠标靠近才显示 */
+.workspace-ribbon.mod-left,
+.status-bar {
+  opacity: .4;
+  transition: opacity var(--br-hover);
+}
+
+.workspace-ribbon.mod-left:hover,
+.status-bar:hover {
+  opacity: 1;
+}
+
+.status-bar {
+  border: none;
+}
+
+/* 文件列表 */
+.nav-folder-title {
+  color: var(--br-sky-ink);
+}
+
+/* 每一行都预留 1px 透明边框，选中时换成玻璃的高光边，行高不跳 */
+.nav-file-title,
+.nav-folder-title,
+.tree-item-self {
+  border: 1px solid transparent;
+  border-radius: var(--br-radius);
+  transition: background-color var(--br-hover), color var(--br-hover);
+}
+
+/* 选中的文件：液态玻璃，前面一颗光点（不呼吸） */
+.nav-file-title.is-active,
+.tree-item-self.nav-file-title.is-active {
+  background:
+    radial-gradient(circle at 10px 50%, var(--br-light) 0 2.5px, rgba(var(--br-light-rgb), .22) 3px 5.5px, transparent 6px) no-repeat padding-box,
+    var(--br-glass-fill) padding-box,
+    var(--br-rim) border-box;
+  box-shadow: 0 2px 8px rgba(30, 90, 150, .12);
+  color: var(--br-sky-title);
+}
+
+/* 一级文件夹：宋体，稍大，拉开字距，像目录里的章节名。
+   一级文件夹的路径里没有「/」，按这个来选 */
+.nav-folder-title[data-path]:not([data-path*="/"]) {
+  font-family: var(--br-serif);
+  font-size: 1.04em;
+  letter-spacing: .06em;
+  color: var(--br-sky-ink);
+}
+
+/* 日期这类数字等宽，一列看下去是齐的 */
+.nav-file-title,
+.nav-folder-title {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 层级线：本来是子文件夹盒子左边的一条边框。边框改透明，
+   在同一个位置画一根两头淡出的光丝 */
+.workspace-split .nav-files-container .tree-item-children {
+  --br-guide: rgba(155, 184, 207, .22);
+  --br-guide-glow: transparent;
+  border-inline-start-color: transparent;
+  background-image:
+    linear-gradient(180deg, transparent, var(--br-guide) 14px, var(--br-guide) calc(100% - 14px), transparent),
+    linear-gradient(90deg, var(--br-guide-glow), transparent);
+  background-repeat: no-repeat;
+  background-size: var(--nav-indentation-guide-width, 1px) 100%, 6px 100%;
+  background-position: 0 0, 0 0;
+  background-origin: border-box;
+}
+
+.theme-light .workspace-split .nav-files-container .tree-item-children {
+  --br-guide: rgba(61, 101, 132, .2);
+}
+
+/* 路径亮起来：当前文件上面的每一级文件夹，名字变亮、后面一颗小光点，
+   它们的层级线微微发蓝 */
+.nav-folder:not(.mod-root):has(.nav-file-title.is-active) > .nav-folder-title {
+  color: var(--br-sky-title);
+}
+
+.nav-folder:not(.mod-root):has(.nav-file-title.is-active) > .nav-folder-title .nav-folder-title-content::after {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-left: 7px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background-color: var(--br-light);
+  box-shadow: 0 0 5px rgba(var(--br-light-rgb), .8);
+}
+
+.nav-folder:not(.mod-root):has(.nav-file-title.is-active) > .tree-item-children {
+  --br-guide: rgba(var(--br-light-rgb), .55);
+  --br-guide-glow: rgba(var(--br-light-rgb), .14);
+}
+
+/* 展开文件夹时，里面的文件轻轻淡入 */
+.nav-folder:not(.mod-root) > .tree-item-children {
+  animation: br-unfold .45s ease both;
+}
+
+@keyframes br-unfold {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 文件列表里想让某个文件跟着呼吸发光，可以在自己的 CSS 片段里给它加：
+   animation: br-nav-glow var(--br-cycle) ease-in-out infinite; */
+@keyframes br-nav-glow {
+  0%, 100% { text-shadow: 0 0 0 transparent; }
+  50%      { text-shadow: 0 0 8px rgba(var(--br-light-rgb), .8); }
+}
+
+/* 分隔线变光丝：侧栏和编辑区之间、标签栏下面的线，两头淡出 */
+body {
+  --tab-outline-color: transparent;
+}
+
+.workspace-split.mod-left-split > .workspace-leaf-resize-handle,
+.workspace-split.mod-right-split > .workspace-leaf-resize-handle {
+  border-color: transparent;
+  background-image: linear-gradient(180deg, transparent, var(--br-divider) 18%, var(--br-divider) 82%, transparent);
+  background-repeat: no-repeat;
+  background-size: 1px 100%;
+}
+
+.workspace-split.mod-left-split > .workspace-leaf-resize-handle {
+  background-position: 100% 0;
+}
+
+.workspace-split.mod-right-split > .workspace-leaf-resize-handle {
+  background-position: 0 0;
+}
+
+.workspace-tab-header-container::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--br-divider) 15%, var(--br-divider) 85%, transparent);
+  pointer-events: none;
+}
+
+/* 侧栏底部署名：文件列表下方一行极淡的宋体，像书的版权页 */
+.nav-files-container::after {
+  content: "Byrcen Breathe";
+  display: block;
+  margin: 56px 0 28px;
+  text-align: center;
+  font-family: var(--br-serif);
+  font-size: 11px;
+  letter-spacing: .35em;
+  color: var(--br-sky-ink-2);
+  opacity: .45;
+  pointer-events: none;
+}
+
+/* 专注模式（默认关）：打字时光标所在的段落清楚，其他段落轻轻变淡 */
+body.br-focus .markdown-source-view.mod-cm6 .cm-editor.cm-focused .cm-content > :not(.cm-active) {
+  opacity: .3;
+  transition: opacity var(--br-hover);
+}
+
+body.br-focus .markdown-source-view.mod-cm6 .cm-editor.cm-focused .cm-content > .cm-active {
+  opacity: 1;
+  transition: opacity var(--br-hover);
+}
+
+/* 标签页：当前页是白玻璃，前面一颗小光点 */
+.workspace .mod-root .workspace-tab-header::before,
+.workspace .mod-root .workspace-tab-header::after {
+  display: none;
+}
+
+.workspace-tab-header-inner {
+  border: 1px solid transparent;
+  border-radius: var(--br-radius);
+  transition: background-color var(--br-hover);
+}
+
+.workspace-tab-header.is-active {
+  box-shadow: none;
+}
+
+.workspace-tab-header.is-active > .workspace-tab-header-inner {
+  background:
+    var(--br-glass-fill) padding-box,
+    var(--br-rim) border-box;
+  box-shadow: 0 2px 8px rgba(30, 90, 150, .1);
+}
+
+.workspace-tab-header.is-active .workspace-tab-header-inner-title::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-right: 7px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background-color: var(--br-light);
+  box-shadow: 0 0 0 2.5px rgba(var(--br-light-rgb), .2);
+}
+
+
+/* ---------- 7. 控件与浮层 ---------- */
+
+/* 普通按钮：玻璃；主要按钮：实心蓝 */
+button:not(.clickable-icon) {
+  background:
+    var(--br-glass-fill) padding-box,
+    var(--br-rim) border-box;
+  color: var(--br-title);
+  border: 1px solid transparent;
+  border-radius: var(--br-radius);
+  box-shadow: 0 1px 3px rgba(30, 90, 150, .1);
+  transition: box-shadow var(--br-hover), filter var(--br-hover);
+}
+
+button:not(.clickable-icon):hover {
+  filter: brightness(1.04);
+  box-shadow: 0 2px 10px rgba(30, 90, 150, .16);
+}
+
+/* 下拉框：右边的小箭头是 Obsidian 用背景图画的，所以这里不能整体改 background，
+   只换底色和边 */
+.dropdown {
+  background-color: var(--br-paper);
+  border-radius: var(--br-radius);
+  box-shadow: 0 0 0 1px var(--br-line);
+  transition: box-shadow var(--br-hover);
+}
+
+.dropdown:hover {
+  box-shadow: 0 0 0 1px var(--br-faint);
+}
+
+button.mod-cta {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, 0)) padding-box,
+    var(--br-light) padding-box,
+    var(--br-rim) border-box;
+  color: #ffffff;
+}
+
+button.mod-cta:hover {
+  box-shadow: 0 2px 12px rgba(var(--br-light-rgb), .4);
+}
+
+button.mod-warning {
+  background-color: transparent;
+  color: var(--br-danger);
+  box-shadow: 0 0 0 1px var(--br-danger);
+}
+
+/* 输入框：纸色底，获得焦点时一圈蓝边加淡光晕 */
+input[type="text"],
+input[type="search"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+textarea {
+  background-color: var(--br-paper);
+  border: none;
+  border-radius: var(--br-radius);
+  box-shadow: 0 0 0 1px var(--br-line);
+  transition: box-shadow var(--br-hover);
+}
+
+input[type="text"]:focus,
+input[type="search"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+textarea:focus {
+  box-shadow: 0 0 0 1px var(--br-light), 0 0 0 4px rgba(var(--br-light-rgb), .18);
+}
+
+/* 开关：3px 小方角，打开时是蓝色。Obsidian 不读 --toggle-radius，直接改元素 */
+.checkbox-container {
+  border-radius: var(--br-radius);
+}
+
+.checkbox-container::after {
+  border-radius: 2px;
+}
+
+.checkbox-container.is-enabled {
+  background-color: var(--br-light);
+}
+
+/* 右键菜单、命令面板、搜索建议、悬停预览：半透明暖纸加毛玻璃 */
+.menu,
+.suggestion-container,
+.prompt,
+.popover.hover-popover {
+  background-color: var(--br-float);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border: none;
+  border-radius: var(--br-radius);
+  box-shadow: var(--br-float-rim), var(--br-float-shadow);
+}
+
+.menu-item,
+.suggestion-item,
+.vertical-tab-nav-item {
+  border-radius: var(--br-radius);
+}
+
+.menu-item.selected:not(.is-disabled):not(.is-label),
+.menu-item:hover:not(.is-disabled):not(.is-label),
+.suggestion-item.is-selected {
+  background-color: var(--br-light);
+  color: #ffffff;
+  --icon-color: #ffffff;
+  --text-muted: rgba(255, 255, 255, .8);
+  --text-faint: rgba(255, 255, 255, .7);
+}
+
+.menu-item.is-warning:hover:not(.is-disabled) {
+  background-color: var(--br-danger);
+}
+
+.menu-separator {
+  border-top-color: var(--br-line);
+}
+
+/* 弹窗、设置页：一张暖纸，浮在变暗的天光上 */
+.modal-bg {
+  background-color: var(--br-modal-bg) !important;
+}
+
+.modal {
+  background-color: var(--br-paper);
+  border: none;
+  border-radius: var(--br-radius);
+  box-shadow: var(--br-paper-shadow);
+}
+
+.modal-title {
+  font-family: var(--br-serif);
+  font-weight: 500;
+}
+
+/* 设置页左边的分类列表：和侧栏一个规则，铺在一小片天光上 */
+.modal.mod-settings .vertical-tab-header {
+  background: var(--br-sky);
+  --text-normal: var(--br-sky-ink);
+  --text-muted: var(--br-sky-ink-2);
+  --text-faint: var(--br-sky-ink-2);
+  --icon-color: var(--br-sky-ink-2);
+  --background-modifier-hover: var(--br-glass-hover);
+}
+
+.vertical-tab-nav-item {
+  border: 1px solid transparent;
+}
+
+.vertical-tab-nav-item.is-active,
+.vertical-tab-header-group-items .vertical-tab-nav-item.is-active {
+  background:
+    var(--br-glass-fill) padding-box,
+    var(--br-rim) border-box;
+  box-shadow: 0 2px 8px rgba(30, 90, 150, .1);
+  color: var(--br-sky-title);
+  --icon-color: var(--br-sky-title);
+}
+
+.setting-item-heading .setting-item-name {
+  font-family: var(--br-serif);
+  font-weight: 500;
+}
+
+/* 提示：一小块深色玻璃；通知：小暖纸，前面一颗光点 */
+.tooltip {
+  background-color: var(--br-tooltip);
+  color: var(--br-tooltip-text);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-radius: var(--br-radius);
+  box-shadow: none;
+}
+
+.tooltip .tooltip-arrow {
+  display: none;
+}
+
+.notice {
+  background-color: var(--br-float);
+  color: var(--br-title);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border-radius: var(--br-radius);
+  box-shadow: var(--br-float-rim), var(--br-float-shadow);
+}
+
+.notice::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 8px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background-color: var(--br-light);
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: var(--br-radius) !important;
+}
+
+
+/* ---------- 8. 新标签页的呼吸花 ----------
+   花、柔光、「吸 气 / 呼 气」和进度都用 CSS 画，全部读同一个 --br-cycle，
+   所以 Style Settings 里改呼吸秒数，花、字、天光、光点一起变。
+   每次新开一个标签页就是新的一轮：呼吸 --br-breaths 次后显示「好 了」，花停下。 */
+
+@property --br-phase {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 1;
+}
+
+@property --br-count {
+  syntax: "<integer>";
+  inherits: false;
+  initial-value: 1;
+}
+
+/* 1 = 吸气，2 = 呼气，3 = 这一轮结束 */
+@counter-style br-breath-words {
+  system: fixed;
+  symbols: "吸 气" "呼 气" "好 了";
+}
+
+.workspace-leaf-content[data-type="empty"] .empty-state {
+  --br-flower-box: min(var(--br-flower-size), 66vh);
+  --br-flower-top: 44%;
+}
+
+/* 花和柔光：浮在整页中间，不占排版位置，花再大也不会把下面的按钮挤走 */
+.workspace-leaf-content[data-type="empty"] .empty-state::before,
+.workspace-leaf-content[data-type="empty"] .empty-state::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: var(--br-flower-top);
+  width: var(--br-flower-box);
+  height: var(--br-flower-box);
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(-70deg);
+  animation: br-flower var(--br-cycle) var(--br-ease) var(--br-breaths) both;
+}
+
+/* 六片花瓣：吸气时从花心长开（离心距离 6% → 24%，半径 13% → 24%），
+   蓝和薄荷交替，叠在一起的地方更亮；最上面一层是花心的白光，呼气时最亮 */
+.workspace-leaf-content[data-type="empty"] .empty-state::before {
+  --br-d: calc(6% + 18% * var(--br-breath));
+  --br-r: calc(13% + 11% * var(--br-breath));
+  z-index: 1;
+  background:
+    radial-gradient(circle at 50% 50%, var(--br-petal-core) 0, transparent 40%),
+    radial-gradient(ellipse var(--br-r) var(--br-r) at 50% calc(50% - var(--br-d)), var(--br-petal-a) 0 97%, transparent 100%),
+    radial-gradient(ellipse var(--br-r) var(--br-r) at calc(50% + var(--br-d) * .866) calc(50% - var(--br-d) * .5), var(--br-petal-b) 0 97%, transparent 100%),
+    radial-gradient(ellipse var(--br-r) var(--br-r) at calc(50% + var(--br-d) * .866) calc(50% + var(--br-d) * .5), var(--br-petal-a) 0 97%, transparent 100%),
+    radial-gradient(ellipse var(--br-r) var(--br-r) at 50% calc(50% + var(--br-d)), var(--br-petal-b) 0 97%, transparent 100%),
+    radial-gradient(ellipse var(--br-r) var(--br-r) at calc(50% - var(--br-d) * .866) calc(50% + var(--br-d) * .5), var(--br-petal-a) 0 97%, transparent 100%),
+    radial-gradient(ellipse var(--br-r) var(--br-r) at calc(50% - var(--br-d) * .866) calc(50% - var(--br-d) * .5), var(--br-petal-b) 0 97%, transparent 100%);
+  background-blend-mode: var(--br-petal-blend);
+}
+
+/* 柔光：三团模糊的光跟着花一起张开，越吸越亮 */
+.workspace-leaf-content[data-type="empty"] .empty-state::after {
+  --br-d: calc(6% + 18% * var(--br-breath));
+  --br-r: calc(14% + 10% * var(--br-breath));
+  background:
+    radial-gradient(ellipse var(--br-r) var(--br-r) at 50% calc(50% - var(--br-d)), rgba(108, 198, 242, var(--br-bloom)), transparent),
+    radial-gradient(ellipse var(--br-r) var(--br-r) at calc(50% + var(--br-d) * .866) calc(50% + var(--br-d) * .5), rgba(111, 220, 207, var(--br-bloom)), transparent),
+    radial-gradient(ellipse var(--br-r) var(--br-r) at calc(50% - var(--br-d) * .866) calc(50% + var(--br-d) * .5), rgba(108, 198, 242, var(--br-bloom)), transparent);
+  filter: blur(calc(var(--br-flower-box) * .06));
+  opacity: calc(.3 + .5 * var(--br-breath));
+}
+
+@keyframes br-flower {
+  0%, 100% { --br-breath: 0; transform: translate(-50%, -50%) rotate(-70deg); }
+  50%      { --br-breath: 1; transform: translate(-50%, -50%) rotate(0deg); }
+}
+
+/* 按钮那一组外面的盒子不再定位，让里面的字和按钮都按整页来摆 */
+.workspace-leaf-content[data-type="empty"] .empty-state-container {
+  position: static;
+  max-height: none;
+  margin: 0;
+}
+
+/* 「吸 气 / 呼 气」和进度：借用本来的标题位置，放在花的正下方 */
+.workspace-leaf-content[data-type="empty"] .empty-state-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--br-flower-top) + var(--br-flower-box) * .2 + 14px);
+  margin: 0;
+  transform: translateY(calc(var(--br-flower-box) * .28 * var(--br-breath)));
+  animation: br-breath var(--br-cycle) var(--br-ease) var(--br-breaths) both;
+  font-size: 0;
+  color: transparent;
+  text-align: center;
+}
+
+.workspace-leaf-content[data-type="empty"] .empty-state-title::before {
+  display: block;
+  counter-reset: br-word var(--br-phase);
+  content: counter(br-word, br-breath-words);
+  font-family: var(--br-serif);
+  font-size: 16px;
+  letter-spacing: .4em;
+  color: var(--br-sky-ink);
+  animation:
+    br-words var(--br-cycle) linear var(--br-breaths) both,
+    br-words-done 1.2s ease calc(var(--br-cycle) * var(--br-breaths)) forwards;
+}
+
+.workspace-leaf-content[data-type="empty"] .empty-state-title::after {
+  display: block;
+  margin-top: 10px;
+  counter-reset: br-n var(--br-count) br-total var(--br-breaths);
+  content: counter(br-n) " / " counter(br-total);
+  font-family: var(--br-sans);
+  font-size: 11px;
+  letter-spacing: .2em;
+  color: var(--br-sky-ink-2);
+  animation:
+    br-count calc(var(--br-cycle) * var(--br-breaths)) steps(var(--br-breaths), end) both,
+    br-count-done 1.2s ease calc(var(--br-cycle) * var(--br-breaths)) forwards;
+}
+
+/* 字在吸气、呼气切换前淡出，切换后淡入 */
+@keyframes br-words {
+  0%     { --br-phase: 1; opacity: 0; }
+  6%     { --br-phase: 1; opacity: 1; }
+  44%    { --br-phase: 1; opacity: 1; }
+  49.9%  { --br-phase: 1; opacity: 0; }
+  50%    { --br-phase: 2; opacity: 0; }
+  56%    { --br-phase: 2; opacity: 1; }
+  94%    { --br-phase: 2; opacity: 1; }
+  100%   { --br-phase: 2; opacity: 0; }
+}
+
+@keyframes br-words-done {
+  from { --br-phase: 3; opacity: 0; }
+  to   { --br-phase: 3; opacity: 1; }
+}
+
+@keyframes br-count {
+  from { --br-count: 1; }
+  to   { --br-count: calc(var(--br-breaths) + 1); }
+}
+
+@keyframes br-count-done {
+  from, to { opacity: 0; }
+}
+
+/* 一直呼吸，不计次数 */
+body.br-breath-forever .workspace-leaf-content[data-type="empty"] .empty-state::before,
+body.br-breath-forever .workspace-leaf-content[data-type="empty"] .empty-state::after,
+body.br-breath-forever .workspace-leaf-content[data-type="empty"] .empty-state-title {
+  animation-iteration-count: infinite;
+}
+
+body.br-breath-forever .workspace-leaf-content[data-type="empty"] .empty-state-title::before {
+  animation: br-words var(--br-cycle) linear infinite both;
+}
+
+body.br-breath-forever .workspace-leaf-content[data-type="empty"] .empty-state-title::after {
+  display: none;
+}
+
+/* 按钮那一组固定在页面底部，横着排成一排 */
+.workspace-leaf-content[data-type="empty"] .empty-state-action-list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 7%;
+  z-index: 2;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 auto;
+  max-width: 90%;
+}
+
+/* 每个按钮是一块液态玻璃 */
+.workspace-leaf-content[data-type="empty"] .empty-state-action-list > .text-icon-button.mod-pill {
+  width: auto;
+  padding: 6px 14px;
+  color: var(--br-sky-title);
+  border: 1px solid transparent;
+  border-radius: var(--br-radius);
+  background:
+    var(--br-glass-fill) padding-box,
+    var(--br-rim) border-box;
+  box-shadow: 0 2px 8px rgba(30, 90, 150, .12);
+  transition: box-shadow var(--br-hover), filter var(--br-hover);
+  --icon-color: var(--br-sky-ink);
+}
+
+.workspace-leaf-content[data-type="empty"] .empty-state-action-list > .text-icon-button.mod-pill:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 2px 12px rgba(30, 90, 150, .2);
+}
+
+.workspace-leaf-content[data-type="empty"] .empty-state-hotkey {
+  display: none;
+}
+
+
+/* ---------- 9. 开关 ----------
+   Style Settings 打开开关时，会给 body 加上对应的 class */
+
+/* 晨曦与星空：关掉后夜里的月光也换回淡蓝的光 */
+body.br-no-dawn-stars {
+  --br-dawn: transparent;
+  --br-star: transparent;
+}
+
+body.br-no-dawn-stars.theme-dark {
+  --br-glow: rgba(120, 190, 240, .2);
+}
+
+body.br-no-dawn-stars .app-container > .horizontal-main-container::after,
+body.br-no-dawn-stars .app-container > .horizontal-main-container > .workspace::before {
+  display: none;
+}
+
+/* 光束与浮尘 */
+body.br-no-beams {
+  --br-beams: linear-gradient(transparent, transparent);
+}
+
+body.br-no-beams .app-container > .horizontal-main-container > .workspace::after {
+  display: none;
+}
+
+/* 液态玻璃：关掉后变回平的玻璃加一圈白边 */
+body.br-no-liquid {
+  --br-glass-fill: linear-gradient(var(--br-glass), var(--br-glass));
+  --br-rim: linear-gradient(var(--br-glass-edge), var(--br-glass-edge));
+  --br-float-rim: 0 0 0 0 transparent;
+}
+
+/* 纸的光影：关掉后投影居中、不再浮动 */
+body.br-no-paper-light .workspace-split.mod-root .workspace-leaf-content[data-type="markdown"] > .view-content {
+  --br-paper-cast: var(--br-paper-shadow);
+}
+
+/* 雾层 */
+body.br-no-fog .app-container::after,
+body.br-no-fog .app-container > .horizontal-main-container::before {
+  display: none;
+}
+
+/* 身后一叠纸 */
+body.br-no-stack .workspace-split.mod-root .workspace-leaf-content[data-type="markdown"]::before,
+body.br-no-stack .workspace-split.mod-root .workspace-leaf-content[data-type="markdown"]::after {
+  display: none;
+}
+
+/* 纸纹 */
+body.br-no-grain {
+  --br-grain: linear-gradient(transparent, transparent);
+}
+
+/* 文件列表的几项 */
+body.br-no-folder-serif .nav-folder-title[data-path]:not([data-path*="/"]) {
+  font-family: inherit;
+  font-size: inherit;
+  letter-spacing: normal;
+}
+
+body.br-no-tabular .nav-file-title,
+body.br-no-tabular .nav-folder-title {
+  font-variant-numeric: normal;
+}
+
+body.br-no-light-guides .workspace-split .nav-files-container .tree-item-children {
+  border-inline-start-color: var(--nav-indentation-guide-color);
+  background-image: none;
+}
+
+body.br-no-path-light .nav-folder:not(.mod-root):has(.nav-file-title.is-active) > .nav-folder-title {
+  color: inherit;
+}
+
+body.br-no-path-light .nav-folder:not(.mod-root):has(.nav-file-title.is-active) > .nav-folder-title .nav-folder-title-content::after {
+  display: none;
+}
+
+body.br-no-path-light .nav-folder:not(.mod-root):has(.nav-file-title.is-active) > .tree-item-children {
+  --br-guide: rgba(155, 184, 207, .22);
+  --br-guide-glow: transparent;
+}
+
+body.br-no-unfold .nav-folder:not(.mod-root) > .tree-item-children {
+  animation: none;
+}
+
+body.br-no-nav-glow .nav-file-title {
+  animation: none !important;
+}
+
+body.br-no-paper-fade .workspace-split.mod-root .workspace-leaf-content[data-type="markdown"] .markdown-source-view.mod-cm6 .cm-scroller,
+body.br-no-paper-fade .workspace-split.mod-root .workspace-leaf-content[data-type="markdown"] .markdown-reading-view > .markdown-preview-view {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+body.br-no-signature .nav-files-container::after {
+  display: none;
+}
+
+
+/* ---------- 10. 所有呼吸动效停下 ----------
+   两种情况：Style Settings 里打开「关闭所有呼吸动效」，或者系统开了「减弱动态效果」。
+   两段规则一样，CSS 没法把这两个条件写进同一条选择器。
+   新标签页的花停在完全张开的样子，下面的字和进度藏起来 */
+
+body.br-no-motion .app-container::before,
+body.br-no-motion .app-container::after,
+body.br-no-motion .app-container > .horizontal-main-container::before,
+body.br-no-motion .app-container > .horizontal-main-container::after,
+body.br-no-motion .app-container > .horizontal-main-container > .workspace::after,
+body.br-no-motion .workspace-split.mod-root .workspace-leaf-content[data-type="markdown"] > .view-content,
+body.br-no-motion .inline-title,
+body.br-no-motion .nav-file-title {
+  animation: none !important;
+}
+
+body.br-no-motion .workspace-leaf-content[data-type="empty"] .empty-state::before,
+body.br-no-motion .workspace-leaf-content[data-type="empty"] .empty-state::after {
+  --br-breath: 1;
+  transform: translate(-50%, -50%);
+  animation: none !important;
+}
+
+body.br-no-motion .workspace-leaf-content[data-type="empty"] .empty-state-title {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-container::before,
+  .app-container::after,
+  .app-container > .horizontal-main-container::before,
+  .app-container > .horizontal-main-container::after,
+  .app-container > .horizontal-main-container > .workspace::after,
+  .workspace-split.mod-root .workspace-leaf-content[data-type="markdown"] > .view-content,
+  .inline-title,
+  .nav-file-title {
+    animation: none !important;
+  }
+
+  .workspace-leaf-content[data-type="empty"] .empty-state::before,
+  .workspace-leaf-content[data-type="empty"] .empty-state::after {
+    --br-breath: 1;
+    transform: translate(-50%, -50%);
+    animation: none !important;
+  }
+
+  .workspace-leaf-content[data-type="empty"] .empty-state-title {
+    display: none;
+  }
+}
